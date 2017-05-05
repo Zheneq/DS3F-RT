@@ -1,4 +1,7 @@
 #include "module_observer.h"
+#include <string>
+
+using namespace std;
 
 void ObsModule::Init()
 {
@@ -7,13 +10,14 @@ void ObsModule::Init()
 	Tick(0);
 }
 
-void ObsModule::AddObserver(int x)
+void ObsModule::AddObserver(int x, const char* name)
 {
 	RecHeads.push_back(new RecHead(x, info->nt));
+	RecHeadNames.push_back(string(name));
 	//RecHeads.back()->Init();
 
 	char *msg = new char[256];
-	sprintf(msg, "Observer %02d at %f", RecHeads.size() - 1, realxe(x));
+	sprintf_s(msg, 256, "Observer %02d (%s) at %f", RecHeads.size() - 1, RecHeadNames.back().c_str(), realxe(x));
 	Log(msg);
 	delete[] msg;
 }
@@ -30,76 +34,45 @@ void ObsModule::Tick(int time)
 {
 	for (auto& RC : RecHeads)
 	{
-		RC->data->data[time] = info->e->data[RC->idx];
+		RC->e->data[time] = info->e->data[RC->idx];
+		RC->h->data[time] = info->h->data[RC->idx];
 	}
 }
 
-void ObsModule::PostCalc(int time)
+void ObsModule::PostCalc(int time, StopType stoptype)
 {
+	if (stoptype == ST_Time) return;
+
 	// Dump all records into single file and reset recheads
-	FILE *f = GetFile("records");
-	for (auto& RC : RecHeads)
+	for (unsigned int i = 0; i < RecHeads.size(); ++i)
 	{
-		RC->Records.push_back(RC->data);
-
-		for (int i = 0; i < RC->get_len(); ++i)
+		// FILE *f = GetFile(RecHeadNames[i].c_str());
+		double TotalNRG = 0.0, ElecNRG = 0.0;
+		for (int j = 0; j < RecHeads[i]->get_len(); ++j)
 		{
-			fprintf(f, "%e, %e\n", realte(i), RC->data->data[i]);
-		}
-		fprintf(f, "\n\n");
-
-		RC->data = NULL;
-	}
-	fclose(f);
-
-
-	Average();
-
-	printf("\n ");
-	for (auto& RC : RecHeads)
-	{
-		delete RC->data;
-		RC->data = nullptr;
-		printf("I have %d records. \n", RC->Records.size());
-	}
-}
-
-void ObsModule::Average()
-{
-	int idx = 0;
-	char *fn = new char[64];
-	for (auto& RC : RecHeads)
-	{
-		RC->Init();
-
-		for (int i = 0; i < RC->get_len(); ++i)
-		{
-			double sum = 0;
-			for (auto rec : RC->Records)
-			{
-				sum += rec->data[i];
-			}
-			RC->data->data[i] = sum / RC->Records.size();
+			TotalNRG += .5 * (RecHeads[i]->e->data[j] * RecHeads[i]->e->data[j] + RecHeads[i]->h->data[j] * RecHeads[i]->h->data[j]);
+			ElecNRG += .5 *  RecHeads[i]->e->data[j] * RecHeads[i]->e->data[j];
 		}
 
-		RC->data->Fourier();
+		double ElecCoef = ElecNRG / info->TotalElecEnergy;
+		double TotalCoef = TotalNRG / info->TotalEnergy;
+		// fprintf(ElecCoef)
+		char msg[256];
+		sprintf_s(msg, 256, "Coef (e/t): %s: %.4lf/%.4lf", RecHeadNames[i].c_str(), ElecCoef, TotalCoef);
+		Log(msg);
+		// fclose(f);
 
-		sprintf(fn, "rec%03d", idx);
-		FILE *f = GetFile(fn);
-		sprintf(fn, "rec%03d-spec", idx);
-		FILE *fs = GetFile(fn);
+		char name[256];
+		sprintf_s(name, "RESULT_ELEC_%s", RecHeadNames[i].c_str());
 
-		RC->data->DumpFullPrecision(f, fs, realte, realspect);
-		//for (auto rec : RC->Records)
-		//{
-		//	rec->DumpFullPrecision(f, fs, realte, realspect);
-		//}
-
+		FILE *f = GetFile(name);
+		fprintf(f, "%.4lf %.4lf", info->cf, ElecCoef);
 		fclose(f);
-		fclose(fs);
 
-		idx++;
+		sprintf_s(name, "RESULT_TOTAL_%s", RecHeadNames[i].c_str());
+		f = GetFile(name);
+		fprintf(f, "%.4lf %.4lf", info->cf, TotalCoef);
+		fclose(f);
 	}
 
-	delete[] fn;
 }

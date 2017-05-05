@@ -109,7 +109,7 @@ void NRGModule::Dump(int time)
 	}
 }
 
-void NRGModule::PostCalc(int time)
+void NRGModule::PostCalc(int time, StopType stoptype)
 {
 	for (int i = 0; i < ARRAYSIZE(dmp); ++i)
 	{

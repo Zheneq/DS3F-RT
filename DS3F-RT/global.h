@@ -19,6 +19,7 @@ const double SPEC_LEVEL = .001;
 extern INIReader *config;
 extern int ExperimentNum;
 extern default_random_engine *gen;
+extern char BaseFolder[512];
 
 struct Layer
 {
@@ -28,8 +29,16 @@ struct Layer
 // Forward decl
 class EnvInfo;
 
+class EX_CalcComplete {};
+enum StopType
+{
+	ST_None,
+	ST_Time,
+	ST_Complete
+};
+
 extern EnvInfo *info;
-extern int ExperimentNum, ExperimentCount;
+extern int obs1, obs2;
 
 double realxe(int i);
 double realxh(int i);
@@ -47,4 +56,4 @@ double ElecEnergy(int x, int t);
 
 FILE *GetFile(const char *name);
 
-void Log(const char *msg);
+void Log(const char *msg, bool bToConsole = true);

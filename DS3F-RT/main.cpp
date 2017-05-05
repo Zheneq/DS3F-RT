@@ -1,4 +1,4 @@
-
+#define _USE_MATH_DEFINES
 #include <stdio.h>
 #include <iostream>
 #include <stdlib.h>
@@ -14,7 +14,6 @@
 #include "module_nrg.h"
 #include "module_refl_trans.h"
 #include "module_specstats.h"
-#include "module_cacher.h"
 #include "module_observer.h"
 #include "module_inv.h"
 
@@ -24,15 +23,15 @@ FILE *LogFile = NULL;
 std::list<Module*> modules;
 field *e_cache = NULL, *h_cache = NULL;
 ObsModule *obs = NULL;
+int obs1 = 0, obs2 = 0;
 default_random_engine *gen = NULL;
 
-int ExperimentNum = -1, ExperimentCount = -1;
-
-void Log(const char *msg)
+void Log(const char *msg, bool bToConsole)
 {
 	if (!LogFile) throw("No log file!");
 
 	fprintf(LogFile, "%s\n", msg);
+	printf("\n\tLog:\t%s\n", msg);
 }
 
 void Load(int argc, char **argv)
@@ -43,13 +42,13 @@ void Load(int argc, char **argv)
 	// Если не задан файл конфигурации, ищем дефолтный
 	if (argc == 1)
 	{
-		strcpy(Path, argv[0]); //strcpy_s(Path, strlen(argv[0]), argv[0]);
+		strcpy_s(Path, argv[0]); //strcpy_s(Path, strlen(argv[0]), argv[0]);
 		for (int i = strlen(argv[0]); i; --i) if (Path[i] == '\\' || Path[i] == '/') { Path[i] = '\0'; break; }
-		strcat(Path, "\\default.ini");
+		strcat_s(Path, "\\default.ini");
 	}
 	else
 	{
-		strcpy(Path, argv[1]);
+		strcpy_s(Path, argv[1]);
 	}
 	printf("%s\n", Path);
 
@@ -71,22 +70,20 @@ void Load(int argc, char **argv)
 	info = new EnvInfo();
 
 	// Output folders
-	_mkdir(config->Get("Data", "DumpPath", "").c_str());
-
-	char Folder[512];
-	int ExpCount = config->GetInteger("Data", "ExperimentCount", -1);
-	for (int i = 0; i <= ExpCount; ++i)
+	if (argc >= 4)
 	{
-		sprintf(Folder, "%s/E%03d", config->Get("Data", "DumpPath", "").c_str(), i);
-		_mkdir(Folder);
+		strcpy_s(BaseFolder, argv[3]);
+		_mkdir(BaseFolder);
 	}
-	sprintf(Folder, "%s/Average%03d", config->Get("Data", "DumpPath", "").c_str(), ExpCount);
-	_mkdir(Folder);
+	else
+	{
+		throw "Missing parameter 3 (Name).\n";
+	}
 
 	// Init logger
 	char *fn = new char[256];
-	sprintf(fn, "%s/log.txt", config->Get("Data", "DumpPath", "").c_str());
-	LogFile = fopen(fn, "w");
+	sprintf_s(fn, 256, "%s/log.txt", BaseFolder);
+	fopen_s(&LogFile, fn, "w");
 	delete[] fn;
 
 	// Модули
@@ -95,41 +92,82 @@ void Load(int argc, char **argv)
 	//	delete m;
 	// modules.clear();
 
-	obs = new ObsModule;
+//	obs = new ObsModule;
 
-	obs->AddObserver(idxxe(-100));
+	// obs->AddObserver(idxxe(-100));
 	//obs->AddObserver(idxxe(-250));
 	//obs->AddObserver(idxxe(-500));
-	obs->AddObserver(idxxe(130));
+	//obs->AddObserver(idxxe(130));
 	//obs->AddObserver(idxxe(530));
 	//obs->AddObserver(idxxe(780));
 
 	modules.push_back(new MainModule);
 //	modules.push_back(new NRGModule);
-	modules.push_back(new InvModule);
+//	modules.push_back(new InvModule);
 //	modules.push_back(new RTModule);
-	modules.push_back(new SSModule);
-	modules.push_back(obs);
+//	modules.push_back(new SSModule);
+//	modules.push_back(obs);
 
 }
 
 void UnLoad()
 {
+	Log("Exiting.");
 	fclose(LogFile);
 }
 
 void Init(int argc, char **argv)
 {
+	double freq;
+	if (argc >= 3)
+	{
+		int res = sscanf_s(argv[2], "%lf", &freq);
+		if (!res)
+		{
+			throw "Invalid parameter 2. Frequency (real) expected.";
+		}
+	}
+	else
+	{
+		throw "Missing parameter 2. Frequency (real) expected.";
+	}
+	int PeriodCount = config->GetInteger("Data", "PeriodCount", 1);
+	double duration = M_PI * PeriodCount / freq;
+	double left = -4.0 * duration;
+	double right = -left;
+
+	// Создаём новую среду
 	if (info) delete info;
-	info = new EnvInfo();
+	info = new EnvInfo(right);
+	info->cf = freq;
+
+	// Настраиваем наблюдателей
+	obs1 = idxxe(left);
+	obs2 = idxxe(info->Layers[info->LayerCount - 1].right + 10.0);
+	if (obs2 >= info->nz || obs1 < 0)
+	{
+		throw "Medium is not long enough.";
+	}
+
+	char msg[256];
+	sprintf_s(msg, "periods: %d, cf: %.3lf, structure at: %.1lf, observers: %.1lf, %.1lf, medium: %.1lf, %.1lf", PeriodCount, info->cf, right, realxe(obs1), realxe(obs2), realxe(0), realxe(info->nz));
+	Log(msg);
+
+	// Удаляем старый модуль наблюдателей и создаём новый
+	modules.remove(obs);
+	if (obs) delete obs;
+	obs = new ObsModule;
+	modules.push_back(obs);
+
+	obs->AddObserver(obs1, "Refl");
+	obs->AddObserver(obs2, "Trans");
 
 	// Начальные значения
 	double xe = realxe(0);
 	for (int i = 0; i<info->nz; xe += info->hs, ++i)
 	{
-		info->h->data[i] = info->e->data[i] = exp(-((xe*xe) / (info->a*info->a)))*cos(info->cf*xe);
+		info->h->data[i] = info->e->data[i] = exp(-((xe*xe) / (duration*duration)))*cos(info->cf*xe);
 	}
-
 
 }
 
@@ -137,12 +175,10 @@ int main(int argc, char **argv)
 {
 	try
 	{
-		gen = new default_random_engine(time(0));
+		gen = new default_random_engine((unsigned int)time(0));
 
 		Load(argc, argv);
 
-		ExperimentCount = config->GetInteger("Data", "ExperimentCount", -1);
-		for (ExperimentNum = 0; ExperimentNum < ExperimentCount; ++ExperimentNum)
 		{
 			Init(argc, argv);
 			for (auto m : modules)
@@ -154,7 +190,7 @@ int main(int argc, char **argv)
 			Log("Structure");
 			for (int i = 0; i < info->LayerCount; ++i)
 			{
-				sprintf(m, info->DumpPattern, info->Layers[i].right - info->Layers[i].left, info->Layers[i].dc);
+				sprintf_s(m, 128, info->DumpPattern, info->Layers[i].right - info->Layers[i].left, info->Layers[i].dc);
 				Log(m);
 			}
 			Log("Structure end");
@@ -171,41 +207,33 @@ int main(int argc, char **argv)
 			fclose(f);
 
 			///////////////////////////////
+			StopType ST = ST_Time;
 
 			// Просчёт
 			int time;
-			for (time = 1; time < info->nt; ++time)
+			try
 			{
-				printf("\r%02d of %d: %d/%d          ", ExperimentNum, ExperimentCount, time, info->nt - 1);
+				for (time = 1; time < info->nt; ++time)
+				{
+					printf("\r%d/%d          ", time, info->nt - 1);
+					for (auto m : modules)
+						m->Tick(time);
 
-				for (auto m : modules)
-					m->Tick(time);
+					if (time % 10000 == 1)
+					{
+						fflush(LogFile);
+					}
+				}
+				printf("\n");
 			}
-			printf("\n");
-
+			catch (EX_CalcComplete exception)
+			{
+				// One of the modules signals that calculation is complete
+				ST = ST_Complete;
+			}
 			for (auto m : modules)
-				m->PostCalc(time);
+				m->PostCalc(time, ST);
 		}
-
-		for (auto m : modules)
-			m->Average();
-/*
-		{
-			Init(argc, argv);
-			for (auto m : modules)
-				m->Init();
-
-			// "Просчёт"
-			memcpy(info->e->data, info->e_cache->data, sizeof(info->e_cache->data[0]) * info->e->GetLen());
-			memcpy(info->h->data, info->h_cache->data, sizeof(info->h_cache->data[0]) * info->h->GetLen());
-
-			for (auto m : modules)
-					m->Tick(-1);
-			
-			for (auto m : modules)
-				m->PostCalc(-1);
-		}
-*/
 	}
 	catch (char *error)
 	{

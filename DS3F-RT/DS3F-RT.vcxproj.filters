@@ -48,9 +48,6 @@
     <ClCompile Include="env.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="module_cacher.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="module_observer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -81,9 +78,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="env.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="module_cacher.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="module_observer.h">

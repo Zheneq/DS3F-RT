@@ -1,29 +1,33 @@
 #include "env.h"
 
-EnvInfo::EnvInfo()
+EnvInfo::EnvInfo(double StructureLeftEdge)
 {
 	uniform_real_distribution<double> LayerWidthDistribution, DPDistribution;
 	char DumpPatternPattern[] = "%%.%df, %%.%df\n";
-	double StructureLeftEdge;
+//	double StructureLeftEdge;
 
-	lz = config->GetReal("Data", "Length", 0.0);
+//	lz = config->GetReal("Data", "Length", 0.0);
 	lt = config->GetReal("Data", "Time", 0.0);
 	hs = config->GetReal("Data", "Step", 0.0);
-	cf = config->GetReal("Data", "CarrFreq", 0.0);
+	cf = 0.0; // config->GetReal("Data", "CarrFreq", 0.0);
 	a = config->GetReal("Data", "ImpWidth", 0.0);
 
 	DP[0] = config->GetReal("Data", "Eps1", 0.0);
 	DP[1] = config->GetReal("Data", "Eps2", 0.0);
 	DPMaxDivergenceRel = config->GetReal("Data", "EpsMaxDivergenceRel", 0.1);
 
-	StructureLeftEdge = config->GetReal("Data", "Left", 0.0);
+	// StructureLeftEdge = config->GetReal("Data", "Left", 0.0);
 	LayerWidth[0] = config->GetReal("Data", "LayerWidth1", 0.0);
 	LayerWidth[1] = config->GetReal("Data", "LayerWidth2", 0.0);
 	LayerCount = config->GetInteger("Data", "LayerCount", 0);
 	LayerWidthMaxDivergenceRel = config->GetReal("Data", "LayerWidthMaxDivergenceRel", 0.1);
 
+	StopEnergyCondition = config->GetReal("Data", "StopEnergyCondition", 1e-4);
+
 	LayerWidthDistribution = std::uniform_real_distribution<double>(1.0 - LayerWidthMaxDivergenceRel, 1.0 + LayerWidthMaxDivergenceRel);
 	DPDistribution = std::uniform_real_distribution<double>(1.0 - DPMaxDivergenceRel, 1.0 + DPMaxDivergenceRel);
+
+	lz = 2.0 * (StructureLeftEdge + (LayerWidth[0] + LayerWidth[1]) * (LayerCount + 1) * 0.5 + 10.0);
 
 	// Инициализация
 	lz0 = lz / 2;

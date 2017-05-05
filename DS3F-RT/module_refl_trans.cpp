@@ -22,7 +22,7 @@ void RTModule::Init()
 	tran->Init(info->nz);
 }
 
-void RTModule::PostCalc(int time)
+void RTModule::PostCalc(int time, StopType stoptype)
 {
 	// Инициализация
 	memcpy(refl->data, info->e->data, sizeof(info->e->data[0]) * info->nz);

@@ -3,23 +3,27 @@
 struct RecHead
 {
 	int idx, len;
-	field *data;
+	field *e,*h;
 	vector<field*> Records;
 
 	RecHead(int _idx, int _len)
 	{
 		idx = _idx;
 		len = _len;
-		data = NULL;
+		e   = NULL;
+		h   = NULL;
 	}
 	void Init()
 	{
-		data = new field();
-		data->Init(len);
+		e = new field();
+		e->Init(len);
+		h = new field();
+		h->Init(len);
 	}
 	~RecHead()
 	{
-		if (data) delete data;
+		if (e) delete e;
+		if (h) delete h;
 		for (auto RS : Records)
 		{
 			if(RS) delete RS;
@@ -33,12 +37,12 @@ struct RecHead
 class ObsModule : public Module
 {
 	vector<RecHead*> RecHeads;
+	vector<string> RecHeadNames;
 public:
 	~ObsModule();
-	virtual void Init();
-	virtual void Tick(int time);
-	virtual void PostCalc(int time);
-	virtual void Average();
+	virtual void Init() override;
+	virtual void Tick(int time) override;
+	virtual void PostCalc(int time, StopType stoptype) override;
 
-	void AddObserver(int x);
+	void AddObserver(int x, const char* name);
 };

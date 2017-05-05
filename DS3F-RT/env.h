@@ -13,8 +13,8 @@ public:
 	double lz;  // ƒлина среды
 	double lt;  // ¬рем€ симул€ции 
 	double lz0; // —двиг координатной сетки
-	int    nz,  // „исло шагов сетки по длине
-		nt;  // „исло шагов сетки по времени
+	int    nz;  // „исло шагов сетки по длине
+	int    nt;  // „исло шагов сетки по времени
 	double hs,  // Ўаги сетки по длине
 		ts;  // Ўаги сетки по времени
 
@@ -35,7 +35,10 @@ public:
 
 	int TimeStamp; // Ўаг, на котором нужно зафиксировать распределение энергии
 
+	double StopEnergyCondition;
+	double TotalEnergy, TotalElecEnergy;
+
 	field *e, *h, *e_cache, *h_cache;
 
-	EnvInfo();
+	EnvInfo(double _StructureLeftEdge = 10000.0);
 };

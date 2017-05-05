@@ -5,6 +5,7 @@
 
 INIReader *config = NULL;
 EnvInfo *info = NULL;
+char BaseFolder[512];
 
 // TODO: inline??
 double realxe(int i) { return i*info->hs - info->lz0; }
@@ -48,16 +49,13 @@ double ElecEnergy(int x, int t)
 FILE *GetFile(const char *name)
 {
 	char DumpPath[512];
-	if (ExperimentNum < ExperimentCount)
-		sprintf(DumpPath, "%s/E%03d/%s.txt", config->Get("Data", "DumpPath", "").c_str(), ExperimentNum, name);
-	else
-		sprintf(DumpPath, "%s/Average%03d/%s.txt", config->Get("Data", "DumpPath", "").c_str(), ExperimentCount, name);
+	sprintf_s(DumpPath, "%s/%s.txt", BaseFolder, name);
 	FILE *f = fopen(DumpPath, "wt");
 
 	if (!f)
 	{
 		char Error[544];
-		sprintf(Error, "Cannot create file: %s", DumpPath);
+		sprintf_s(Error, "Cannot create file: %s", DumpPath);
 		throw(Error);
 	}
 

@@ -26,7 +26,7 @@ void InvModule::Tick(int time)
 }
 
 
-void InvModule::PostCalc(int time)
+void InvModule::PostCalc(int time, StopType stoptype)
 {
 	double average[3], max[3], min[3];
 	char *msg = new char[256];

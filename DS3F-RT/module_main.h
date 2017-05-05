@@ -7,9 +7,12 @@ private:
 	double StructureLeftEdge; // Левая граница слоя
 
 	int DumpFrameStep; // Шаг дампа
+	int CheckFrameStep; // Шаг проверок (на окончание)
+
+	void Check(int time);
 
 public:
-	virtual void Init();
-	virtual void Tick(int time);
-	void PostCalc(int time);
+	virtual void Init() override;
+	virtual void Tick(int time) override;
+	void PostCalc(int time, StopType stoptype) override;
 };
